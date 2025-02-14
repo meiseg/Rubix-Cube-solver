@@ -1,0 +1,212 @@
+import numpy as np
+import random
+import twophase.solver as sv
+import twophase.performance as pv
+class cube:
+    def __init__(self):
+        self.moves = ""
+        self.front =  np.full((3, 3), "F")
+        self.left =  np.full((3, 3), "L")
+        self.right =  np.full((3, 3), "R")
+        self.back =  np.full((3, 3), "B")
+        self.up =  np.full((3, 3), "U")
+        self.down =  np.full((3, 3), "D")
+        self.possible_moves = ["F","F'","B","B'","U","U'","L","L'","R","R'","D","D'"]
+         # Create corner pieces
+        self.face = {"D":self.down,"F":self.front,"U":self.up,"B":self.back,"L":self.left,"R":self.right}
+
+    
+    def get_cur_state(self):
+        state_str = ""
+        for face in ['U', 'R', 'F', 'D', 'L', 'B']:
+            state_str += ''.join(self.face[face].flatten())
+        return state_str
+
+
+    def __call__(self,moves):
+        for move in moves.split():
+            if move.endswith("'"):
+                self.counter_clockwise(move)
+            else:
+                self.rot_clockwise(move)
+    def changing_representation(self):
+        dic = {"F1":"F","F3":"F'","U1":"U","U3":"U'","R1":"R","R3":"R'",
+               "L1":"L","L3":"L'","D1":"D","D3":"D'","B1":"B","B3":"B'","R2": "R R","F2":"F F", "B2": "B B", 
+               "L2": "L L","D2":"D D", "U2": "U U",}
+        converted_moves = []
+        for move in self.moves.split():
+            converted_moves.append(dic.get(move, move))
+        return ' '.join(converted_moves)
+
+    def solve(self):
+        cube_str= self.get_cur_state()
+        a = sv.solve(cube_str,19,2)
+        self.moves = a
+        sol_mov = self.changing_representation()
+        print(sol_mov)
+        self(sol_mov) 
+  
+    def scramble(self):
+        upper = random.randint(25,28)
+        move = ""
+        prev_move = None
+        for i in range(upper):
+            x = random.choice(self.possible_moves)
+            while x == prev_move:
+                x = random.choice(self.possible_moves)
+            move += x + " "
+        print(move)
+        self(move)
+             
+    def rot_clockwise(self,face_name):
+        
+        if face_name == "U":
+            self.move_up() 
+        elif face_name == "R":
+            self.move_right()
+        elif face_name =="F":
+            self.move_front()
+        elif face_name == "D":
+            self.move_down()
+        elif face_name == "L":
+            self.move_left()
+        elif face_name =="B":
+            self.move_back()
+        else:
+            return 
+
+    def counter_clockwise(self,face_name):
+        if face_name == "U'":
+            self.move_upc() 
+        elif face_name == "R'":
+            self.move_rightc()
+        elif face_name =="F'":
+            self.move_frontc()
+        elif face_name == "D'":
+            self.move_downc()
+        elif face_name == "L'":
+            self.move_leftc()
+        elif face_name =="B'":
+            self.move_backc()
+        else:
+            return 
+        
+    def move_front(self):
+        tmp  = np.rot90(self.face["F"],k = -1)
+        cp_l = (self.face["L"]).copy()
+        self.face["F"] = tmp
+    
+        self.face["L"][:,2] = (self.face["D"][0])
+        self.face["D"][0] = np.flipud(self.face["R"][:,0])
+        self.face["R"][:,0] = (self.face["U"][2])
+        self.face["U"][2] = np.flipud(cp_l[:,2])
+    def move_up(self):
+        tmp  = np.rot90(self.face["U"],k = -1)
+        cp_left = (self.face["L"]).copy()
+        self.face["U"] = tmp
+    
+        self.face["L"][0] = (self.face["F"][0])
+        self.face["F"][0] = self.face["R"][0]
+        self.face["R"][0] = (self.face["B"][0])
+        self.face["B"][0] = (cp_left[0])
+    
+    def move_right(self):
+        tmp = np.rot90(self.face["R"], k=-1)
+        cp_front = np.copy(self.face["F"])
+        self.face["R"] = tmp
+
+        self.face["F"][:,2] =(self.face["D"][:,2])
+        self.face["D"][:,2] = np.flipud(self.face["B"][:,0])
+        self.face["B"][:,0] = np.flipud(self.face["U"][:,2])
+        self.face["U"][:,2] = (cp_front[:,2])
+    def move_left(self):
+        tmp = np.rot90(self.face["L"], k=-1)
+        cp_front = np.copy(self.face["F"])
+        self.face["L"] = tmp
+
+        self.face["F"][:,0] = (self.face["U"][:,0])
+        self.face["U"][:,0] = np.flipud(self.face["B"][:,2])
+        self.face["B"][:,2] = np.flipud(self.face["D"][:,0])
+        self.face["D"][:,0] = (cp_front[:,0])
+    def move_down(self):
+        tmp = np.rot90(self.face["D"], k=-1)
+        cp_front = np.copy(self.face["F"])
+        self.face["D"] = tmp
+
+        self.face["F"][2] = (self.face["L"][2])
+        self.face["L"][2] = (self.face["B"][2])
+        self.face["B"][2] = (self.face["R"][2])
+        self.face["R"][2] = (cp_front[2])
+    def move_back(self):
+        tmp  = np.rot90(self.face["B"],k = -1)
+        cp_l = np.copy(self.face["L"])
+        self.face["B"] = tmp
+    
+        self.face["L"][:,0] = np.flipud(self.face["U"][0])
+        self.face["U"][0] = (self.face["R"][:,2])
+        self.face["R"][:,2] = np.flipud(self.face["D"][2])
+        self.face["D"][2] = (cp_l[:,0])
+    #defining the counter clockwise_moves
+    def move_frontc(self):
+        tmp  = np.rot90(self.face["F"],k = 1)
+        cp_l = (self.face["L"]).copy()
+        self.face["F"] = tmp
+    
+        self.face["L"][:,2] = np.flipud(self.face["U"][2])
+        self.face["U"][2] = (self.face["R"][:,0])
+        self.face["R"][:,0] = np.flipud(self.face["D"][0])
+        self.face["D"][0] = (cp_l[:,2])
+    def move_upc(self):
+        tmp  = np.rot90(self.face["U"],k = 1)
+        cp_left = (self.face["L"]).copy()
+        self.face["U"] = tmp
+    
+        self.face["L"][0] = (self.face["B"][0])
+        self.face["B"][0] = (self.face["R"][0])
+        self.face["R"][0] = (self.face["F"][0])
+        self.face["F"][0] = (cp_left[0])
+    
+    def move_rightc(self):
+        tmp = np.rot90(self.face["R"], k=1)
+        cp_front = np.copy(self.face["F"])
+        self.face["R"] = tmp
+
+        self.face["F"][:,2] = (self.face["U"][:,2])
+        self.face["U"][:,2] = np.flipud(self.face["B"][:,0])
+        self.face["B"][:,0] = np.flipud(self.face["D"][:,2])
+        self.face["D"][:,2] = (cp_front[:,2])
+    def move_leftc(self):
+        tmp = np.rot90(self.face["L"], k=1)
+        cp_front = np.copy(self.face["F"])
+        self.face["L"] = tmp
+
+        self.face["F"][:,0] = (self.face["D"][:,0])
+        self.face["D"][:,0] = np.flipud(self.face["B"][:,2])
+        self.face["B"][:,2] = np.flipud(self.face["U"][:,0])
+        self.face["U"][:,0] = (cp_front[:,0])
+    def move_downc(self):
+        tmp = np.rot90(self.face["D"], k=1)
+        cp_front = np.copy(self.face["F"])
+        self.face["D"] = tmp
+
+        self.face["F"][2] = (self.face["R"][2])
+        self.face["R"][2] = (self.face["B"][2])
+        self.face["B"][2] = (self.face["L"][2])
+        self.face["L"][2] = (cp_front[2])
+    def move_backc(self):
+        tmp  = np.rot90(self.face["B"],k = 1)
+        cp_l = np.copy(self.face["L"])
+        self.face["B"] = tmp
+    
+        self.face["L"][:,0] = (self.face["D"][2])
+        self.face["D"][2] = np.flipud(self.face["R"][:,2])
+        self.face["R"][:,2] = (self.face["U"][0])
+        self.face["U"][0] = np.flipud(cp_l[:,0])
+
+    def __str__(self):
+        output = ""
+        for face_name, face_array in self.face.items():
+            output += f"{face_name} face:\n{face_array}\n\n"
+        return output
+    def getface(self,face_name):
+        return self.face[face_name]
